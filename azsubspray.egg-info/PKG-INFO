@@ -1,3 +1,15 @@
+Metadata-Version: 2.4
+Name: azsubspray
+Version: 0.1.0
+Summary: Spraying tool to list Azure subscriptions.
+Author-email: Jake Otte <jake123otte1@gmail.com>
+License: MIT
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: requests
+Requires-Dist: msal
+Requires-Dist: colorama
+
 # AzSubSpray
 
 Quick script to rapidly enumerate available Azure subscriptions provided a list of valid credentials.
@@ -6,14 +18,6 @@ Use cases include:
 - Pivot to cloud infrastructure following on-prem compromise
 
 The tool supports custom client ID and User-Agent headers for CAP bypasses.
-
-![img](./demo.png)
-
-## Install
-
-```
-pipx install git+https://github.com/jakeotte/azsubspray
-```
 
 ```
 == AzSubspray ==
