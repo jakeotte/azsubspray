@@ -6,9 +6,8 @@ Reads a file with lines in the format:
   username@example.com:password123
 
 Attempts ROPC (username/password) auth for each user (MSAL) and lists subscriptions.
-NOT recommended for production. Will fail if the tenant or account blocks ROPC or if MFA is required.
+Will fail if the tenant or account blocks ROPC or if MFA is required.
 """
-import math
 import sys
 import os
 import argparse
